@@ -43,7 +43,9 @@ type subcommand struct {
 
 func (a *app) topCommands() []subcommand {
 	return []subcommand{
-		{"secrets", "Create, read, list and delete secrets", a.secretsCommand},
+		{"secrets", "Create, read, list, burn and delete secrets", a.secretsCommand},
+		{"orgs", "Organizations, members, audit logs and email domains", a.orgsCommand},
+		{"inbox", "Send encrypted messages to an organization inbox", a.inboxCommand},
 		{"account", "Your account, 2FA and API keys", a.accountCommand},
 		{"admin", "Users, invites, instance settings and analytics (admins)", a.adminCommand},
 		{"login", "Sign in and store a session", a.loginCommand},

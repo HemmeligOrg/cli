@@ -13,6 +13,7 @@ func (a *app) adminCommand(args []string) error {
 		{"invites", "List, create and deactivate invite codes", a.invitesCommand},
 		{"instance", "Show and change the instance settings", a.instanceCommand},
 		{"analytics", "Show secret and visitor statistics", a.analyticsCommand},
+		{"audit", "Show or export the audit log of the instance", a.adminAudit},
 	})
 }
 
@@ -407,4 +408,12 @@ func (a *app) analyticsShow(args []string) error {
 		fmt.Fprintf(a.stdout, "Last %s\n", stats.Range)
 		a.table([]string{"METRIC", "VALUE"}, rows)
 	})
+}
+
+func (a *app) adminAudit(args []string) error {
+	fs := newFlagSet("hemmelig admin audit [flags]",
+		"Show the audit log of the instance. Entries hold metadata only, never secret content.",
+		`hemmelig admin audit --category settings`,
+		`hemmelig admin audit --csv - > audit.csv`)
+	return a.auditCommand(fs, args, false)
 }
