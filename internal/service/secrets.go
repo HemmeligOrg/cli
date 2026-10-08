@@ -39,7 +39,27 @@ type CreateSecretInput struct {
 	Password string
 	IPRange  string
 	Files    []FileInput
+	// NotifyOnView emails the creator each time someone opens the secret. It
+	// needs a signed-in creator and email delivery on the instance.
+	NotifyOnView bool
+	// ReleaseIn keeps the secret closed for this many seconds. 0 opens it now.
+	ReleaseIn int
+	// Recipients are the email addresses that can open the secret. Each
+	// recipient must sign in with a verified address.
+	Recipients []string
+	// OrgOnly lets only the members of Organization open the secret.
+	OrgOnly bool
+	// Organization is the ID or the slug of an organization that owns the
+	// secret. The creator must be a member.
+	Organization string
 }
+
+// The server limits for the v7 options.
+const (
+	MinReleaseSeconds = 60
+	MaxReleaseSeconds = 30 * 24 * 3600
+	MaxRecipients     = 20
+)
 
 // CreateSecretResult is the created secret.
 type CreateSecretResult struct {
@@ -51,6 +71,11 @@ type CreateSecretResult struct {
 	IPRange           string   `json:"ipRange,omitempty"`
 	Files             []string `json:"files"`
 	CanDelete         bool     `json:"canDelete"`
+	NotifyOnView      bool     `json:"notifyOnView,omitempty"`
+	ReleaseIn         int      `json:"releaseInSeconds,omitempty"`
+	Recipients        []string `json:"recipients,omitempty"`
+	OrgOnly           bool     `json:"orgOnly,omitempty"`
+	Organization      string   `json:"organization,omitempty"`
 }
 
 type attachedFile struct {
@@ -65,6 +90,26 @@ func (s *Service) CreateSecret(ctx context.Context, in CreateSecretInput) (*Crea
 	}
 	if in.Password != "" && len(in.Password) < 5 {
 		return nil, errors.New("the password must have at least 5 characters")
+	}
+	if in.ReleaseIn != 0 && (in.ReleaseIn < MinReleaseSeconds || in.ReleaseIn > MaxReleaseSeconds) {
+		return nil, errors.New("the release time must be between 1 minute and 30 days from now")
+	}
+	if len(in.Recipients) > MaxRecipients {
+		return nil, fmt.Errorf("a secret can have at most %d recipients", MaxRecipients)
+	}
+	if in.OrgOnly && len(in.Recipients) > 0 {
+		return nil, errors.New("lock the secret to the organization or to recipients, not both")
+	}
+	if in.OrgOnly && in.Organization == "" {
+		return nil, errors.New("an organization lock needs an organization")
+	}
+	organizationID := ""
+	if in.Organization != "" {
+		org, err := s.FindOrganization(ctx, in.Organization)
+		if err != nil {
+			return nil, err
+		}
+		organizationID = org.ID
 	}
 
 	key := in.Password
@@ -113,6 +158,22 @@ func (s *Service) CreateSecret(ctx context.Context, in CreateSecretInput) (*Crea
 	if in.IPRange != "" {
 		payload["ipRange"] = in.IPRange
 	}
+	if in.NotifyOnView {
+		payload["notifyOnView"] = true
+	}
+	if in.ReleaseIn > 0 {
+		payload["releaseIn"] = in.ReleaseIn
+	}
+	if organizationID != "" {
+		payload["organizationId"] = organizationID
+	}
+	switch {
+	case in.OrgOnly:
+		payload["recipientLock"] = "org"
+	case len(in.Recipients) > 0:
+		payload["recipientLock"] = "emails"
+		payload["recipientEmails"] = in.Recipients
+	}
 
 	fileNames := make([]string, 0, len(in.Files))
 	if len(in.Files) > 0 {
@@ -151,6 +212,11 @@ func (s *Service) CreateSecret(ctx context.Context, in CreateSecretInput) (*Crea
 		IPRange:           in.IPRange,
 		Files:             fileNames,
 		CanDelete:         created.DeleteToken != "",
+		NotifyOnView:      in.NotifyOnView,
+		ReleaseIn:         in.ReleaseIn,
+		Recipients:        in.Recipients,
+		OrgOnly:           in.OrgOnly,
+		Organization:      in.Organization,
 	}
 	if !in.NoViewLimit {
 		views := in.Views
@@ -227,6 +293,36 @@ type checkResponse struct {
 	IsPasswordProtected bool   `json:"isPasswordProtected"`
 	PasswordScheme      string `json:"passwordScheme"`
 	Salt                string `json:"salt"`
+	// AvailableAt is set while a scheduled secret is still closed.
+	AvailableAt string `json:"availableAt"`
+	// RecipientLock is "org" or "emails" when only some people can open it.
+	RecipientLock string `json:"recipientLock"`
+}
+
+// NotReleasedError means that a scheduled secret is still closed. Opening it
+// uses no view.
+type NotReleasedError struct {
+	AvailableAt string
+}
+
+func (e *NotReleasedError) Error() string {
+	return "the secret is not released yet: it opens at " + e.AvailableAt
+}
+
+// openError explains why the server refused to open a secret.
+func openError(err error) error {
+	switch api.CodeOf(err) {
+	case "SIGN_IN_REQUIRED":
+		return fmt.Errorf("only chosen people can open this secret: run hemmelig login or set HEMMELIG_API_KEY (%w)", err)
+	case "NOT_A_RECIPIENT":
+		return fmt.Errorf("this secret is not for your account (%w)", err)
+	case "EMAIL_NOT_VERIFIED":
+		return fmt.Errorf("verify the email address of your account to open this secret (%w)", err)
+	}
+	if api.StatusOf(err) == http.StatusTooEarly {
+		return fmt.Errorf("the secret is not released yet (%w)", err)
+	}
+	return notFound(err)
 }
 
 type revealResponse struct {
@@ -257,6 +353,9 @@ func (s *Service) ReadSecret(ctx context.Context, in ReadSecretInput) (*ReadSecr
 	if err := client.Get(ctx, path+"/check", nil, &check); err != nil {
 		return nil, notFound(err)
 	}
+	if check.AvailableAt != "" {
+		return nil, &NotReleasedError{AvailableAt: check.AvailableAt}
+	}
 
 	key := in.Key
 	if key == "" {
@@ -281,10 +380,10 @@ func (s *Service) ReadSecret(ctx context.Context, in ReadSecretInput) (*ReadSecr
 
 	var reveal revealResponse
 	if err := client.Send(ctx, http.MethodPost, path, body, &reveal); err != nil {
-		if api.StatusOf(err) == http.StatusUnauthorized {
+		if api.StatusOf(err) == http.StatusUnauthorized && api.CodeOf(err) == "" {
 			return nil, errors.New("wrong password")
 		}
-		return nil, notFound(err)
+		return nil, openError(err)
 	}
 	s.saveToken(client.BaseURL, ref.ID, reveal.DeleteToken)
 
@@ -368,6 +467,11 @@ type SecretSummary struct {
 	IPRange             string `json:"ipRange"`
 	IsBurnable          bool   `json:"isBurnable"`
 	FileCount           int    `json:"fileCount"`
+	NotifyOnView        bool   `json:"notifyOnView"`
+	AvailableAt         string `json:"availableAt"`
+	RecipientLock       string `json:"recipientLock"`
+	OpenCount           int    `json:"openCount"`
+	LastOpenedAt        string `json:"lastOpenedAt"`
 }
 
 // Page is the pagination data of a list.

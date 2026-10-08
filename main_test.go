@@ -12,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/HemmeligOrg/hemmelig-cli/internal/api"
 	"github.com/HemmeligOrg/hemmelig-cli/internal/prompt"
@@ -206,5 +207,29 @@ func TestStoredKeyStaysOnItsHost(t *testing.T) {
 	s, err = a.settings()
 	if err != nil || s.APIKey != "" {
 		t.Fatalf("the stored key must not go to another host: %+v", s)
+	}
+}
+
+func TestReleaseSeconds(t *testing.T) {
+	now := time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)
+	cases := []struct {
+		in, at string
+		want   int
+	}{
+		{"", "", 0},
+		{"2h", "", 7200},
+		{"", "2026-10-08T14:30:00Z", 9000},
+		{"", "2026-10-08T16:30:00+02:00", 9000},
+	}
+	for _, c := range cases {
+		got, err := releaseSeconds(c.in, c.at, now)
+		if err != nil || got != c.want {
+			t.Fatalf("%q %q: got %d, %v; want %d", c.in, c.at, got, err, c.want)
+		}
+	}
+	for _, bad := range [][2]string{{"2h", "2026-10-08T14:30:00Z"}, {"", "tomorrow"}, {"2x", ""}} {
+		if _, err := releaseSeconds(bad[0], bad[1], now); err == nil {
+			t.Fatalf("%q %q must fail", bad[0], bad[1])
+		}
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/HemmeligOrg/hemmelig-cli/internal/htmltext"
 	"github.com/HemmeligOrg/hemmelig-cli/internal/service"
@@ -17,7 +18,9 @@ func (a *app) secretsCommand(args []string) error {
 		{"get", "Open a secret link, decrypt it and save its files", a.secretsGet},
 		{"read", "Same as get", a.secretsGet},
 		{"list", "List your secrets (metadata only)", a.secretsList},
+		{"activity", "Show when your secrets were opened (view receipts)", a.secretsActivity},
 		{"delete", "Delete a secret before it expires", a.secretsDelete},
+		{"burn", "Burn many of your secrets at once", a.secretsBurn},
 	})
 }
 
@@ -28,6 +31,8 @@ func (a *app) secretsCreate(args []string) error {
 		`hemmelig secrets create "db password: hunter2" --expires 1h`,
 		`cat .env | hemmelig secrets create --title "Staging env" --views 3`,
 		`hemmelig secrets create "see file" --file ./id_ed25519 --password-prompt`,
+		`hemmelig secrets create "for Kari only" --to kari@example.com --notify`,
+		`hemmelig secrets create "launch code" --release-in 2h --org acme --org-only`,
 		`hemmelig "legacy form still works" -e 7d`)
 	title := fs.String("title", "t", "", "title", "Title, encrypted like the secret")
 	password := fs.String("password", "p", "", "password", "Protect the secret with a password. The link then has no key")
@@ -40,8 +45,18 @@ func (a *app) secretsCreate(args []string) error {
 	burnAfterTime := fs.Bool("burn-after-time", "", "Same as --no-view-limit. The web app uses this name")
 	ipRange := fs.String("ip", "", "", "cidr", "Allow only this IP address or CIDR range to open the secret")
 	files := fs.List("file", "f", "path", "Attach a file. Files need an API key or a session")
+	notify := fs.Bool("notify", "", "Email me each time someone opens the secret. Needs an API key or a session")
+	releaseIn := fs.String("release-in", "", "", "time", "Keep the secret closed for this time, for example 30m, 2h or 3d")
+	releaseAt := fs.String("release-at", "", "", "time", "Keep the secret closed until this time, for example 2026-10-09T14:00:00Z")
+	recipients := fs.List("to", "", "email", "Only this person can open the secret, after sign-in. Repeat the flag for more people")
+	org := fs.String("org", "", "", "org", "Create the secret in this organization: its slug or ID")
+	orgOnly := fs.Bool("org-only", "", "Only members of the organization can open the secret. Needs --org")
 	if done, err := a.parse(fs, args); done || err != nil {
 		return err
+	}
+	release, err := releaseSeconds(*releaseIn, *releaseAt, time.Now())
+	if err != nil {
+		return usageError{err}
 	}
 
 	expiresIn, err := service.ParseExpiration(*expires)
@@ -85,15 +100,20 @@ func (a *app) secretsCreate(args []string) error {
 		return err
 	}
 	result, err := svc.CreateSecret(a.ctx, service.CreateSecretInput{
-		Text:        text,
-		Title:       *title,
-		ExpiresIn:   expiresIn,
-		Views:       *views,
-		NoViewLimit: unlimited,
-		Burnable:    !*noBurnable,
-		Password:    pass,
-		IPRange:     *ipRange,
-		Files:       inputs,
+		Text:         text,
+		Title:        *title,
+		ExpiresIn:    expiresIn,
+		Views:        *views,
+		NoViewLimit:  unlimited,
+		Burnable:     !*noBurnable,
+		Password:     pass,
+		IPRange:      *ipRange,
+		Files:        inputs,
+		NotifyOnView: *notify,
+		ReleaseIn:    release,
+		Recipients:   *recipients,
+		OrgOnly:      *orgOnly,
+		Organization: *org,
 	})
 	if err != nil {
 		return err
@@ -102,6 +122,15 @@ func (a *app) secretsCreate(args []string) error {
 		fmt.Fprintln(a.stdout, result.Link)
 		if result.PasswordProtected {
 			a.info("The link has no key. Send the password on another channel.")
+		}
+		if result.ReleaseIn > 0 {
+			a.info("The secret opens at %s.", time.Now().Add(time.Duration(result.ReleaseIn)*time.Second).Format(time.RFC3339))
+		}
+		if len(result.Recipients) > 0 {
+			a.info("Only %s can open it, after sign-in with a verified address.", strings.Join(result.Recipients, ", "))
+		}
+		if result.OrgOnly {
+			a.info("Only members of %s can open it, after sign-in.", result.Organization)
 		}
 	})
 }
@@ -240,6 +269,18 @@ func (a *app) secretsList(args []string) error {
 			if secret.FileCount > 0 {
 				flags = append(flags, fmt.Sprintf("files:%d", secret.FileCount))
 			}
+			if secret.RecipientLock != "" {
+				flags = append(flags, "locked:"+secret.RecipientLock)
+			}
+			if secret.AvailableAt != "" {
+				flags = append(flags, "opens:"+shortTime(secret.AvailableAt))
+			}
+			if secret.NotifyOnView {
+				flags = append(flags, "notify")
+			}
+			if secret.OpenCount > 0 {
+				flags = append(flags, fmt.Sprintf("opened:%d", secret.OpenCount))
+			}
 			if len(flags) == 0 {
 				flags = append(flags, "-")
 			}
@@ -272,4 +313,89 @@ func (a *app) secretsDelete(args []string) error {
 		return err
 	}
 	return a.done("Deleted the secret.", map[string]bool{"deleted": true})
+}
+
+// releaseSeconds converts --release-in or --release-at to seconds from now.
+func releaseSeconds(in, at string, now time.Time) (int, error) {
+	switch {
+	case in != "" && at != "":
+		return 0, errors.New("use --release-in or --release-at, not both")
+	case in != "":
+		return parseDuration(in)
+	case at != "":
+		when, err := time.Parse(time.RFC3339, at)
+		if err != nil {
+			return 0, fmt.Errorf("invalid --release-at %q: use RFC 3339, for example 2026-10-09T14:00:00Z", at)
+		}
+		return int(when.Sub(now).Round(time.Second).Seconds()), nil
+	}
+	return 0, nil
+}
+
+func (a *app) secretsBurn(args []string) error {
+	fs := newFlagSet("hemmelig secrets burn <link|id>... [flags]",
+		"Burn secrets that you created. A burned secret is gone for everyone. The view receipts stay.",
+		`hemmelig secrets burn 3uSXycrFyYfP X9fTq2LmPo0a`,
+		`hemmelig secrets burn --all --yes`)
+	all := fs.Bool("all", "", "Burn all your active secrets")
+	yes := fs.Bool("yes", "y", "Do not ask for confirmation")
+	if done, err := a.parse(fs, args); done || err != nil {
+		return err
+	}
+	if *all == (len(fs.Args()) > 0) {
+		return usagef("give secret IDs or links, or --all")
+	}
+	if *all {
+		if err := a.confirm(*yes, "burn", "This burns all your active secrets."); err != nil {
+			return err
+		}
+	}
+	svc, _, err := a.service()
+	if err != nil {
+		return err
+	}
+	deleted, err := svc.BurnSecrets(a.ctx, fs.Args(), *all)
+	if err != nil {
+		return err
+	}
+	return a.done(fmt.Sprintf("Burned %d secrets.", deleted), map[string]int{"deleted": deleted})
+}
+
+func (a *app) secretsActivity(args []string) error {
+	fs := newFlagSet("hemmelig secrets activity [flags]",
+		"Show when your secrets were opened, burned or deleted. The receipts stay after the secrets are gone. The viewer shows only for organization secrets and for secrets with recipients.",
+		`hemmelig secrets activity`, `hemmelig secrets activity --limit 50 --json`)
+	page := fs.Int("page", "", 1, "number", "Page number")
+	limit := fs.Int("limit", "", 20, "number", "Entries per page, up to 100")
+	if done, err := a.parse(fs, args); done || err != nil {
+		return err
+	}
+	svc, _, err := a.service()
+	if err != nil {
+		return err
+	}
+	list, err := svc.ListActivity(a.ctx, *page, *limit)
+	if err != nil {
+		return err
+	}
+	return a.output(list, func() {
+		rows := [][]string{}
+		for _, entry := range list.Data {
+			viewer := entry.Viewer
+			if viewer == "" {
+				viewer = "-"
+			}
+			views := "-"
+			if entry.ViewsRemaining != nil {
+				views = fmt.Sprint(*entry.ViewsRemaining)
+			}
+			secret := entry.SecretID
+			if entry.Count != nil {
+				secret = fmt.Sprintf("%d secrets", *entry.Count)
+			}
+			rows = append(rows, []string{shortTime(entry.CreatedAt), entry.Action, secret, viewer, views})
+		}
+		a.table([]string{"TIME", "ACTION", "SECRET", "VIEWER", "VIEWS LEFT"}, rows)
+		a.info("Page %d of %d, %d entries in total.", list.Meta.Page, max(list.Meta.TotalPages, 1), list.Meta.Total)
+	})
 }
