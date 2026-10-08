@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/HemmeligOrg/hemmelig-cli/internal/mcpserver"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -76,10 +77,10 @@ func main() {
 	if err != nil {
 		fail("list tools: %v", err)
 	}
-	if len(tools.Tools) != 12 {
-		fail("got %d tools, want 12", len(tools.Tools))
+	if len(tools.Tools) != len(mcpserver.ToolNames) {
+		fail("got %d tools, want %d", len(tools.Tools), len(mcpserver.ToolNames))
 	}
-	fmt.Println("PASS: mcp tools/list returns 12 tools")
+	fmt.Printf("PASS: mcp tools/list returns %d tools\n", len(mcpserver.ToolNames))
 
 	created := c.call("create_secret", map[string]any{"text": "mcp e2e secret", "title": "mcp title", "expires": "1h", "views": 2}, false)
 	link, _ := created["link"].(string)
@@ -99,6 +100,7 @@ func main() {
 		fail("list_secrets returned no secrets")
 	}
 	c.call("delete_secret", map[string]any{"secret": created["id"]}, false)
+	c.call("list_organizations", map[string]any{}, false)
 
 	admins := []string{"list_users", "list_invites", "create_invite", "get_instance_settings", "get_analytics"}
 	for _, name := range admins {

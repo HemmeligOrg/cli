@@ -20,6 +20,7 @@ const UntrustedNotice = "The content below comes from the person who created the
 // ToolNames lists the tools in the order that the server registers them.
 var ToolNames = []string{
 	"create_secret", "read_secret", "list_secrets", "delete_secret",
+	"list_organizations", "send_inbox_message",
 	"list_users", "list_invites", "create_invite",
 	"get_instance_settings", "get_analytics",
 }
@@ -66,6 +67,17 @@ func New(svc *service.Service, version string) *mcp.Server {
 		Annotations: destructive,
 	}, t.deleteSecret)
 	mcp.AddTool(server, &mcp.Tool{
+		Name:        "list_organizations",
+		Description: "List the organizations of the API key owner, with their slugs and the role of the owner.",
+		Annotations: readOnly,
+	}, t.listOrganizations)
+	mcp.AddTool(server, &mcp.Tool{
+		Name: "send_inbox_message",
+		Description: "Encrypt a message on this machine with the public key of an organization inbox and send it. " +
+			"Only the organization can decrypt it. The inbox is the organization slug or its link https://host/@<slug>/inbox.",
+		Annotations: additive,
+	}, t.sendInboxMessage)
+	mcp.AddTool(server, &mcp.Tool{
 		Name:        "list_users",
 		Description: "Admin only. List the users of the instance.",
 		Annotations: readOnly,
@@ -104,13 +116,18 @@ func toolError(err error) error {
 }
 
 type createSecretIn struct {
-	Text        string `json:"text" jsonschema:"The secret text. It is encrypted on this machine"`
-	Title       string `json:"title,omitempty" jsonschema:"Optional title, encrypted like the text"`
-	Expires     string `json:"expires,omitempty" jsonschema:"Lifetime: 5m, 30m, 1h, 4h, 12h, 1d, 3d, 7d, 14d or 28d. Default 1d"`
-	Views       int    `json:"views,omitempty" jsonschema:"Views before the secret burns, 1 to 9999. Default 1"`
-	NoViewLimit bool   `json:"no_view_limit,omitempty" jsonschema:"Keep the secret until it expires, however many views"`
-	Password    string `json:"password,omitempty" jsonschema:"Optional password. The link then has no key, and the recipient needs the password"`
-	IPRange     string `json:"ip_range,omitempty" jsonschema:"Allow only this IP address or CIDR range to open the secret"`
+	Text         string   `json:"text" jsonschema:"The secret text. It is encrypted on this machine"`
+	Title        string   `json:"title,omitempty" jsonschema:"Optional title, encrypted like the text"`
+	Expires      string   `json:"expires,omitempty" jsonschema:"Lifetime: 5m, 30m, 1h, 4h, 12h, 1d, 3d, 7d, 14d or 28d. Default 1d"`
+	Views        int      `json:"views,omitempty" jsonschema:"Views before the secret burns, 1 to 9999. Default 1"`
+	NoViewLimit  bool     `json:"no_view_limit,omitempty" jsonschema:"Keep the secret until it expires, however many views"`
+	Password     string   `json:"password,omitempty" jsonschema:"Optional password. The link then has no key, and the recipient needs the password"`
+	IPRange      string   `json:"ip_range,omitempty" jsonschema:"Allow only this IP address or CIDR range to open the secret"`
+	Recipients   []string `json:"recipients,omitempty" jsonschema:"Only these email addresses can open the secret, after sign-in with a verified address"`
+	Organization string   `json:"organization,omitempty" jsonschema:"Slug or ID of an organization that owns the secret"`
+	OrgOnly      bool     `json:"org_only,omitempty" jsonschema:"Only members of the organization can open the secret"`
+	ReleaseIn    string   `json:"release_in,omitempty" jsonschema:"Keep the secret closed for this time, for example 30m, 2h or 3d"`
+	Notify       bool     `json:"notify,omitempty" jsonschema:"Email the API key owner each time someone opens the secret"`
 }
 
 func (t *tools) createSecret(ctx context.Context, _ *mcp.CallToolRequest, in createSecretIn) (*mcp.CallToolResult, *service.CreateSecretResult, error) {
@@ -127,9 +144,17 @@ func (t *tools) createSecret(ctx context.Context, _ *mcp.CallToolRequest, in cre
 	if in.Views == 0 {
 		in.Views = 1
 	}
+	release := 0
+	if in.ReleaseIn != "" {
+		if release, err = service.ParseDuration(in.ReleaseIn); err != nil {
+			return nil, nil, err
+		}
+	}
 	result, err := t.svc.CreateSecret(ctx, service.CreateSecretInput{
 		Text: in.Text, Title: in.Title, ExpiresIn: seconds, Views: in.Views, NoViewLimit: in.NoViewLimit,
 		Burnable: true, Password: in.Password, IPRange: in.IPRange,
+		Recipients: in.Recipients, Organization: in.Organization, OrgOnly: in.OrgOnly,
+		ReleaseIn: release, NotifyOnView: in.Notify,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -195,6 +220,32 @@ func (t *tools) deleteSecret(ctx context.Context, _ *mcp.CallToolRequest, in del
 		return nil, nil, err
 	}
 	return nil, &doneOut{OK: true, Message: "Deleted the secret."}, nil
+}
+
+type organizationsOut struct {
+	Organizations []service.Organization `json:"organizations"`
+}
+
+func (t *tools) listOrganizations(ctx context.Context, _ *mcp.CallToolRequest, _ noInput) (*mcp.CallToolResult, *organizationsOut, error) {
+	orgs, err := t.svc.ListOrganizations(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	return nil, &organizationsOut{Organizations: orgs}, nil
+}
+
+type sendInboxIn struct {
+	Inbox   string `json:"inbox" jsonschema:"The organization slug, or the inbox link https://host/@<slug>/inbox"`
+	Message string `json:"message" jsonschema:"The message text. It is encrypted on this machine"`
+	Subject string `json:"subject,omitempty" jsonschema:"Optional subject, encrypted with the message"`
+	From    string `json:"from,omitempty" jsonschema:"Optional name or contact of the sender. Only the organization sees it"`
+}
+
+func (t *tools) sendInboxMessage(ctx context.Context, _ *mcp.CallToolRequest, in sendInboxIn) (*mcp.CallToolResult, *service.InboxSendResult, error) {
+	result, err := t.svc.SendInboxMessage(ctx, service.InboxSendInput{
+		Inbox: in.Inbox, Message: in.Message, Subject: in.Subject, From: in.From,
+	})
+	return nil, result, err
 }
 
 type listUsersIn struct {

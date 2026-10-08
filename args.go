@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/HemmeligOrg/hemmelig-cli/internal/service"
 )
 
 type flagKind int
@@ -213,15 +215,4 @@ func isUsageError(err error) bool {
 }
 
 // parseDuration accepts a number with the unit s, m, h or d, for example 7d.
-func parseDuration(value string) (int, error) {
-	if len(value) < 2 {
-		return 0, fmt.Errorf("invalid duration %q: use a number and s, m, h or d, for example 7d", value)
-	}
-	units := map[byte]int{'s': 1, 'm': 60, 'h': 3600, 'd': 86400}
-	unit, ok := units[value[len(value)-1]]
-	number, err := strconv.Atoi(value[:len(value)-1])
-	if !ok || err != nil || number <= 0 {
-		return 0, fmt.Errorf("invalid duration %q: use a number and s, m, h or d, for example 7d", value)
-	}
-	return number * unit, nil
-}
+func parseDuration(value string) (int, error) { return service.ParseDuration(value) }
