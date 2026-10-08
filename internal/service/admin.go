@@ -383,7 +383,10 @@ func (s *Service) GetAnalytics(ctx context.Context, timeRange string) (*Analytic
 	}
 	query := url.Values{"timeRange": {timeRange}}
 	result := &Analytics{Range: timeRange, Visitors: []any{}}
-	if err := s.API.Get(ctx, "/api/analytics", query, &result.Secrets); err != nil {
+	// Hemmelig 7 shows the whole instance only with scope=all. Without it, the
+	// route expects an organization.
+	secretsQuery := url.Values{"timeRange": {timeRange}, "scope": {"all"}}
+	if err := s.API.Get(ctx, "/api/analytics", secretsQuery, &result.Secrets); err != nil {
 		return nil, adminError(err)
 	}
 	if err := s.API.Get(ctx, "/api/analytics/visitors/daily", query, &result.Visitors); err != nil {

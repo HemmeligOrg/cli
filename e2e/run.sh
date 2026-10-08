@@ -2,7 +2,7 @@
 # End-to-end test of the Go CLI and the MCP server against a real Hemmelig
 # server. The script stops at the first failure.
 #
-# Start a fresh server first. From the repository root:
+# Start a fresh server first. From a clone of the Hemmelig app repository:
 #
 #   export DATABASE_URL="file:$PWD/../cli-e2e.db"
 #   npx prisma migrate deploy
@@ -10,7 +10,7 @@
 #     BETTER_AUTH_URL=http://localhost:5194 HEMMELIG_BASE_URL=http://localhost:5194 \
 #     npx tsx server.ts
 #
-# Then run the test from cli-go:
+# Then run the test from the root of this repository:
 #
 #   HEMMELIG_E2E_URL=http://localhost:5194 ./e2e/run.sh
 #
@@ -84,8 +84,9 @@ random() { head -c 8 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
 pause_login() { sleep 11; }
 
 # ---------------------------------------------------------------- basics
-equal "version" "$(h admin version)" "1.1.0"
-equal "--version" "$(h admin --version)" "1.1.0"
+VERSION="$(sed -n 's/^const version = "\(.*\)"$/\1/p' "$ROOT/main.go")"
+equal "version" "$(h admin version)" "$VERSION"
+equal "--version" "$(h admin --version)" "$VERSION"
 contains "help" "$(h admin help)" "Commands:"
 equal "health" "$(h admin health --json | jq -r .status)" "healthy"
 
