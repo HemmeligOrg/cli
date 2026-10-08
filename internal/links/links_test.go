@@ -14,6 +14,10 @@ func TestParseSecret(t *testing.T) {
 		{"http://localhost:5173/secret/" + id, Secret{"http://localhost:5173", id, ""}},
 		{"https://h.example/prefix/s/" + id + "#k", Secret{"https://h.example/prefix", id, "k"}},
 		{id, Secret{"", id, ""}},
+		{"https://h.example/s/3uSXycrFyYfP#k", Secret{"https://h.example", "3uSXycrFyYfP", "k"}},
+		{"https://h.example/@acme/s/3uSXycrFyYfP#k", Secret{"https://h.example", "3uSXycrFyYfP", "k"}},
+		{"https://h.example/prefix/@acme/s/3uSXycrFyYfP", Secret{"https://h.example/prefix", "3uSXycrFyYfP", ""}},
+		{"3uSXycrFyYfP", Secret{"", "3uSXycrFyYfP", ""}},
 	}
 	for _, c := range cases {
 		got, err := ParseSecret(c.in)
@@ -25,7 +29,7 @@ func TestParseSecret(t *testing.T) {
 		}
 	}
 
-	for _, bad := range []string{"", "hello", "https://h.example/other/" + id, "https://h.example/s/not-an-id"} {
+	for _, bad := range []string{"", "hello", "https://h.example/other/" + id, "https://h.example/s/short", "https://h.example/s/bad%20id1234"} {
 		if _, err := ParseSecret(bad); err == nil {
 			t.Fatalf("%q must fail", bad)
 		}

@@ -9,7 +9,10 @@ import (
 	"strings"
 )
 
-var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+// idPattern matches the IDs of the server: short random IDs such as
+// 3uSXycrFyYfP, and the UUIDs of older secrets. The minimum length keeps short
+// words from counting as IDs.
+var idPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{8,64}$`)
 
 // ErrInvalidLink means that the value is not a Hemmelig link or ID.
 var ErrInvalidLink = errors.New("not a Hemmelig link or secret ID")
@@ -40,8 +43,8 @@ func NormalizeBaseURL(raw string) (string, error) {
 	return strings.TrimRight(parsed.Scheme+"://"+parsed.Host+parsed.Path, "/"), nil
 }
 
-// IsID reports whether value has the form of a secret or request ID.
-func IsID(value string) bool { return uuidPattern.MatchString(value) }
+// IsID reports whether value has the form of a secret ID.
+func IsID(value string) bool { return idPattern.MatchString(value) }
 
 // SecretLink returns the short link /s/<id>#<key>. Without a key, the link
 // has no fragment, which is the form for password-protected secrets.
@@ -61,6 +64,7 @@ func RequestLink(baseURL, id, token string) string {
 // ParseSecret accepts these forms:
 //
 //	https://host/s/<id>#<key>
+//	https://host/@<org>/s/<id>#<key> (an organization link)
 //	https://host/secret/<id>#decryptionKey=<key>
 //	https://host/s/<id> or https://host/secret/<id> (no key)
 //	<id>
@@ -84,7 +88,13 @@ func ParseSecret(value string) (Secret, error) {
 		return Secret{}, ErrInvalidLink
 	}
 
-	prefix := strings.Join(segments[:len(segments)-2], "/")
+	// An organization link has /@<slug> before /s/<id>. The API is at the
+	// root of the instance, so the slug is not part of the base URL.
+	prefixSegments := segments[:len(segments)-2]
+	if n := len(prefixSegments); n > 0 && strings.HasPrefix(prefixSegments[n-1], "@") {
+		prefixSegments = prefixSegments[:n-1]
+	}
+	prefix := strings.Join(prefixSegments, "/")
 	base := parsed.Scheme + "://" + parsed.Host
 	if prefix != "" {
 		base += "/" + prefix
