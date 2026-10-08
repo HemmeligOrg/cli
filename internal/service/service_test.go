@@ -243,19 +243,4 @@ func TestDurations(t *testing.T) {
 	if _, err := ParseExpiration("2d"); err == nil || !strings.Contains(err.Error(), "5m, 30m, 1h") {
 		t.Fatalf("expected the sorted choices, got %v", err)
 	}
-	if seconds, err := ParseValidity("30d"); err != nil || seconds != 2592000 {
-		t.Fatalf("30d = %d %v", seconds, err)
-	}
-}
-
-func TestRequestLinkRelative(t *testing.T) {
-	token := strings.Repeat("a", 64)
-	got := requestLink("https://h.example", "/request/"+testID+"#token="+token)
-	if got != "https://h.example/request/"+testID+"#token="+token {
-		t.Fatalf("relative link: %s", got)
-	}
-	got = requestLink("https://h.example", "http://internal:3000/request/"+testID+"#token="+token)
-	if got != "https://h.example/request/"+testID+"#token="+token {
-		t.Fatalf("absolute link: %s", got)
-	}
 }

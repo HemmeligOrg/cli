@@ -20,7 +20,6 @@ const UntrustedNotice = "The content below comes from the person who created the
 // ToolNames lists the tools in the order that the server registers them.
 var ToolNames = []string{
 	"create_secret", "read_secret", "list_secrets", "delete_secret",
-	"create_request", "list_requests", "cancel_request",
 	"list_users", "list_invites", "create_invite",
 	"get_instance_settings", "get_analytics",
 }
@@ -66,21 +65,6 @@ func New(svc *service.Service, version string) *mcp.Server {
 		Description: "Delete a secret before it expires. Works for secrets that the API key owner created, and for secrets that this machine created or opened.",
 		Annotations: destructive,
 	}, t.deleteSecret)
-	mcp.AddTool(server, &mcp.Tool{
-		Name:        "create_request",
-		Description: "Create a secret request link. Send it to a person, who then encrypts a secret for the API key owner.",
-		Annotations: additive,
-	}, t.createRequest)
-	mcp.AddTool(server, &mcp.Tool{
-		Name:        "list_requests",
-		Description: "List the secret requests of the API key owner, with their status.",
-		Annotations: readOnly,
-	}, t.listRequests)
-	mcp.AddTool(server, &mcp.Tool{
-		Name:        "cancel_request",
-		Description: "Cancel a pending secret request. Its link stops working.",
-		Annotations: destructive,
-	}, t.cancelRequest)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "list_users",
 		Description: "Admin only. List the users of the instance.",
@@ -211,67 +195,6 @@ func (t *tools) deleteSecret(ctx context.Context, _ *mcp.CallToolRequest, in del
 		return nil, nil, err
 	}
 	return nil, &doneOut{OK: true, Message: "Deleted the secret."}, nil
-}
-
-type createRequestIn struct {
-	Title       string `json:"title" jsonschema:"What you ask for"`
-	Description string `json:"description,omitempty" jsonschema:"More detail for the person who fills it in"`
-	Views       int    `json:"views,omitempty" jsonschema:"Views of the secret that the request creates. Default 1"`
-	Expires     string `json:"expires,omitempty" jsonschema:"Lifetime of that secret: 5m, 30m, 1h, 4h, 12h, 1d, 3d, 7d, 14d or 28d. Default 1d"`
-	ValidFor    string `json:"valid_for,omitempty" jsonschema:"How long the link works: 1h, 12h, 1d, 3d, 7d, 14d or 30d. Default 7d"`
-	IPRange     string `json:"ip_range,omitempty" jsonschema:"Allow only this IP address or CIDR range to open the secret"`
-	PreventBurn bool   `json:"prevent_burn,omitempty" jsonschema:"Keep the secret until it expires, however many views"`
-	WebhookURL  string `json:"webhook_url,omitempty" jsonschema:"Call this URL when the request is fulfilled"`
-}
-
-func (t *tools) createRequest(ctx context.Context, _ *mcp.CallToolRequest, in createRequestIn) (*mcp.CallToolResult, *service.CreateRequestResult, error) {
-	if in.Title == "" {
-		return nil, nil, errors.New("title is required")
-	}
-	if in.Expires == "" {
-		in.Expires = "1d"
-	}
-	if in.ValidFor == "" {
-		in.ValidFor = "7d"
-	}
-	if in.Views == 0 {
-		in.Views = 1
-	}
-	expires, err := service.ParseExpiration(in.Expires)
-	if err != nil {
-		return nil, nil, err
-	}
-	valid, err := service.ParseValidity(in.ValidFor)
-	if err != nil {
-		return nil, nil, err
-	}
-	result, err := t.svc.CreateRequest(ctx, service.CreateRequestInput{
-		Title: in.Title, Description: in.Description, MaxViews: in.Views, ExpiresIn: expires, ValidFor: valid,
-		AllowedIP: in.IPRange, PreventBurn: in.PreventBurn, WebhookURL: in.WebhookURL,
-	})
-	return nil, result, err
-}
-
-type listRequestsIn struct {
-	Status string `json:"status,omitempty" jsonschema:"Filter: all, pending, fulfilled, expired or cancelled"`
-	Page   int    `json:"page,omitempty" jsonschema:"Page number. Default 1"`
-	Limit  int    `json:"limit,omitempty" jsonschema:"Items per page, up to 100. Default 20"`
-}
-
-func (t *tools) listRequests(ctx context.Context, _ *mcp.CallToolRequest, in listRequestsIn) (*mcp.CallToolResult, *service.RequestList, error) {
-	list, err := t.svc.ListRequests(ctx, in.Status, in.Page, in.Limit)
-	return nil, list, err
-}
-
-type cancelRequestIn struct {
-	ID string `json:"id" jsonschema:"The request ID"`
-}
-
-func (t *tools) cancelRequest(ctx context.Context, _ *mcp.CallToolRequest, in cancelRequestIn) (*mcp.CallToolResult, *doneOut, error) {
-	if err := t.svc.CancelRequest(ctx, in.ID); err != nil {
-		return nil, nil, err
-	}
-	return nil, &doneOut{OK: true, Message: "Cancelled the request."}, nil
 }
 
 type listUsersIn struct {

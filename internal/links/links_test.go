@@ -36,28 +36,11 @@ func TestParseSecret(t *testing.T) {
 	}
 }
 
-func TestParseRequest(t *testing.T) {
-	got, err := ParseRequest("https://h.example/request/" + id + "#token=tok")
-	if err != nil || got != (Request{"https://h.example", id, "tok"}) {
-		t.Fatalf("got %+v, %v", got, err)
-	}
-	legacy, err := ParseRequest("https://h.example/request/" + id + "?token=tok")
-	if err != nil || legacy.Token != "tok" {
-		t.Fatalf("legacy: got %+v, %v", legacy, err)
-	}
-	if _, err := ParseRequest("https://h.example/request/" + id); err == nil {
-		t.Fatal("a link without a token must fail")
-	}
-}
-
 func TestBuildLinks(t *testing.T) {
 	if got := SecretLink("https://h.example/", id, "k"); got != "https://h.example/s/"+id+"#k" {
 		t.Fatal(got)
 	}
 	if got := SecretLink("https://h.example", id, ""); got != "https://h.example/s/"+id {
-		t.Fatal(got)
-	}
-	if got := RequestLink("https://h.example", id, "t"); got != "https://h.example/request/"+id+"#token=t" {
 		t.Fatal(got)
 	}
 }

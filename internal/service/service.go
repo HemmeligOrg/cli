@@ -38,11 +38,6 @@ var Expirations = map[string]int{
 	"1d": 86400, "3d": 259200, "7d": 604800, "14d": 1209600, "28d": 2419200,
 }
 
-// Validities are the request link lifetimes that the API accepts, in seconds.
-var Validities = map[string]int{
-	"1h": 3600, "12h": 43200, "1d": 86400, "3d": 259200, "7d": 604800, "14d": 1209600, "30d": 2592000,
-}
-
 func choices(values map[string]int) string {
 	names := make([]string, 0, len(values))
 	for name := range values {
@@ -58,14 +53,6 @@ func ParseExpiration(name string) (int, error) {
 		return seconds, nil
 	}
 	return 0, fmt.Errorf("invalid expiration %q: use one of %s", name, choices(Expirations))
-}
-
-// ParseValidity converts a request link lifetime such as "7d" to seconds.
-func ParseValidity(name string) (int, error) {
-	if seconds, ok := Validities[name]; ok {
-		return seconds, nil
-	}
-	return 0, fmt.Errorf("invalid validity %q: use one of %s", name, choices(Validities))
 }
 
 // ExpirationName converts seconds back to a name, or returns the seconds.

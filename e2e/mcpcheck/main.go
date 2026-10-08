@@ -100,13 +100,6 @@ func main() {
 	}
 	c.call("delete_secret", map[string]any{"secret": created["id"]}, false)
 
-	request := c.call("create_request", map[string]any{"title": "mcp e2e request", "valid_for": "1d"}, false)
-	if !strings.Contains(fmt.Sprint(request["link"]), "/request/") {
-		fail("create_request link %v", request["link"])
-	}
-	c.call("list_requests", map[string]any{"status": "pending"}, false)
-	c.call("cancel_request", map[string]any{"id": request["id"]}, false)
-
 	admins := []string{"list_users", "list_invites", "create_invite", "get_instance_settings", "get_analytics"}
 	for _, name := range admins {
 		args := map[string]any{}

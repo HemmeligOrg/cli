@@ -395,9 +395,6 @@ func (a *app) analyticsShow(args []string) error {
 		for _, key := range []string{"totalSecrets", "activeSecrets", "expiredSecrets", "totalViews", "averageViews"} {
 			rows = append(rows, []string{key, fmt.Sprint(stats.Secrets[key])})
 		}
-		if requests, ok := stats.Secrets["secretRequests"].(map[string]any); ok {
-			rows = append(rows, []string{"secretRequests", fmt.Sprintf("%v (%v fulfilled)", requests["total"], requests["fulfilled"])})
-		}
 		unique, visits := 0.0, 0.0
 		for _, day := range stats.Visitors {
 			if entry, ok := day.(map[string]any); ok {

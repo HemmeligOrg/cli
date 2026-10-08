@@ -52,7 +52,7 @@ HEMMELIG_E2E_URL=http://localhost:5194 ./e2e/run.sh
 | `internal/service`   | The operations that the commands and the MCP server share |
 | `internal/mcpserver` | The MCP tools                                             |
 | `internal/config`    | The config file, the session and the delete tokens        |
-| `internal/links`     | Secret and request links                                  |
+| `internal/links`     | Secret links                                              |
 | `internal/prompt`    | Prompts without echo                                      |
 | `internal/htmltext`  | Converts web app HTML to plain text                       |
 | `testdata`           | Crypto vectors and the script that makes them             |

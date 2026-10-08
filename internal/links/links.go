@@ -1,4 +1,4 @@
-// Package links builds and parses Hemmelig secret links and request links.
+// Package links builds and parses Hemmelig secret links.
 package links
 
 import (
@@ -26,13 +26,6 @@ type Secret struct {
 	Key string
 }
 
-// Request is a parsed secret request link.
-type Request struct {
-	BaseURL string
-	ID      string
-	Token   string
-}
-
 // NormalizeBaseURL removes a trailing slash and checks the scheme.
 func NormalizeBaseURL(raw string) (string, error) {
 	raw = strings.TrimSpace(raw)
@@ -54,11 +47,6 @@ func SecretLink(baseURL, id, key string) string {
 		link += "#" + key
 	}
 	return link
-}
-
-// RequestLink returns the link that the person who fulfils a request opens.
-func RequestLink(baseURL, id, token string) string {
-	return strings.TrimRight(baseURL, "/") + "/request/" + id + "#token=" + token
 }
 
 // ParseSecret accepts these forms:
@@ -105,33 +93,4 @@ func ParseSecret(value string) (Secret, error) {
 		key = strings.TrimPrefix(key, "decryptionKey=")
 	}
 	return Secret{BaseURL: base, ID: id, Key: key}, nil
-}
-
-// ParseRequest accepts https://host/request/<id>#token=<token> and the legacy
-// form with ?token=<token>.
-func ParseRequest(value string) (Request, error) {
-	parsed, err := url.Parse(strings.TrimSpace(value))
-	if err != nil || parsed.Host == "" {
-		return Request{}, errors.New("not a Hemmelig request link")
-	}
-
-	segments := strings.Split(strings.Trim(parsed.Path, "/"), "/")
-	if len(segments) < 2 || segments[len(segments)-2] != "request" || !IsID(segments[len(segments)-1]) {
-		return Request{}, errors.New("not a Hemmelig request link")
-	}
-
-	token := strings.TrimPrefix(parsed.Fragment, "token=")
-	if token == "" {
-		token = parsed.Query().Get("token")
-	}
-	if token == "" {
-		return Request{}, errors.New("the request link has no token")
-	}
-
-	prefix := strings.Join(segments[:len(segments)-2], "/")
-	base := parsed.Scheme + "://" + parsed.Host
-	if prefix != "" {
-		base += "/" + prefix
-	}
-	return Request{BaseURL: base, ID: segments[len(segments)-1], Token: token}, nil
 }

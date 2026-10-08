@@ -193,23 +193,6 @@ pass "secrets list --json"
 expect_exit 2 "secrets create with an invalid expiration" key secrets create x --expires 2y
 expect_exit 3 "secrets list without credentials" h anon secrets list
 
-# ---------------------------------------------------------------- requests
-REQUEST="$(key requests create --title "E2E request" --description "Send the key" --valid-for 1d --expires 1h --json)"
-REQUEST_ID="$(jq -r .id <<<"$REQUEST")"
-REQUEST_LINK="$(jq -r .link <<<"$REQUEST")"
-contains "requests create" "$REQUEST_LINK" "$URL/request/$REQUEST_ID#token="
-equal "requests open without an account" "$(h anon requests open "$REQUEST_LINK" --json | jq -r .title)" "E2E request"
-equal "requests list --status pending" "$(key requests list --status pending --json | jq -r --arg id "$REQUEST_ID" '[.data[] | select(.id == $id)] | length')" "1"
-equal "requests show" "$(key requests show "$REQUEST_ID" --json | jq -r .link)" "$REQUEST_LINK"
-FILLED="$(h anon requests submit "$REQUEST_LINK" "requested secret" --title "Answer")"
-contains "requests submit" "$FILLED" "$URL/s/"
-equal "read the submitted secret" "$(key secrets get "$FILLED" 2>/dev/null)" "requested secret"
-equal "requests show after submit" "$(key requests show "$REQUEST_ID" --json | jq -r .status)" "fulfilled"
-expect_exit 4 "requests submit twice" h anon requests submit "$REQUEST_LINK" "again"
-SECOND="$(key requests create --title "To cancel" --json | jq -r .id)"
-key requests cancel "$SECOND" >/dev/null
-equal "requests cancel" "$(key requests show "$SECOND" --json | jq -r .status)" "cancelled"
-
 # ---------------------------------------------------------------- 2FA
 equal "2fa status off" "$(h admin account 2fa status --json | jq -r .enabled)" "false"
 URI="$(printf '%s\n' "$ADMIN_PASS" | h admin account 2fa enable --no-verify --json | jq -r .totpURI)"
