@@ -159,9 +159,10 @@ func (s *Service) CreateSecret(ctx context.Context, in CreateSecretInput) (*Crea
 	return result, nil
 }
 
-// uploadFile encrypts a file and its name and streams it to the server.
+// uploadFile encrypts a file in the v2 format of the web app, encrypts its
+// name, and streams both to the server.
 func (s *Service) uploadFile(ctx context.Context, cipher *hcrypto.Cipher, file FileInput) (attachedFile, error) {
-	encrypted, err := cipher.Encrypt(file.Data)
+	encrypted, err := cipher.EncryptFile(file.Data)
 	if err != nil {
 		return attachedFile{}, err
 	}
@@ -177,7 +178,10 @@ func (s *Service) uploadFile(ctx context.Context, cipher *hcrypto.Cipher, file F
 		Body:          bytes.NewReader(encrypted),
 		ContentLength: int64(len(encrypted)),
 		ContentType:   "application/octet-stream",
-		Headers:       map[string]string{"X-Hemmelig-File-Name": hex.EncodeToString(encryptedName)},
+		Headers: map[string]string{
+			"X-Hemmelig-File-Format":        hcrypto.FileFormatV2,
+			"X-Hemmelig-Encrypted-Filename": hex.EncodeToString(encryptedName),
+		},
 	}, &uploaded)
 	if api.StatusOf(err) == http.StatusUnauthorized {
 		return attachedFile{}, errors.New("file attachments need an API key or a session: run hemmelig login or set HEMMELIG_API_KEY")
@@ -351,7 +355,7 @@ func (s *Service) downloadFile(ctx context.Context, client *api.Client, cipher *
 	if resp.Status != http.StatusOK {
 		return nil, &api.Error{Status: resp.Status, Message: "file download failed"}
 	}
-	return cipher.Decrypt(data)
+	return cipher.DecryptFile(data)
 }
 
 // SecretSummary is one secret in a list. The server knows only metadata.

@@ -35,6 +35,8 @@ type Client struct {
 type Error struct {
 	Status  int
 	Message string
+	// Code is the machine-readable error code, when the API sends one.
+	Code string
 }
 
 func (e *Error) Error() string {
@@ -42,6 +44,15 @@ func (e *Error) Error() string {
 		return fmt.Sprintf("request failed with status %d", e.Status)
 	}
 	return fmt.Sprintf("%s (status %d)", e.Message, e.Status)
+}
+
+// CodeOf returns the error code of an API error, or "" for other errors.
+func CodeOf(err error) string {
+	var apiErr *Error
+	if errors.As(err, &apiErr) {
+		return apiErr.Code
+	}
+	return ""
 }
 
 // StatusOf returns the HTTP status of an API error, or 0 for other errors.
@@ -163,7 +174,7 @@ func (c *Client) Do(ctx context.Context, r Request, out any) error {
 	}
 
 	if resp.Status < 200 || resp.Status > 299 {
-		return &Error{Status: resp.Status, Message: errorMessage(data)}
+		return &Error{Status: resp.Status, Message: errorMessage(data), Code: errorCode(data)}
 	}
 
 	if out != nil && len(bytes.TrimSpace(data)) > 0 {
@@ -182,6 +193,17 @@ func (c *Client) Get(ctx context.Context, path string, query url.Values, out any
 // Send is a shortcut for a request with a JSON body.
 func (c *Client) Send(ctx context.Context, method, path string, body, out any) error {
 	return c.Do(ctx, Request{Method: method, Path: path, JSON: body}, out)
+}
+
+// errorCode reads the "code" field of an API error body.
+func errorCode(data []byte) string {
+	var payload struct {
+		Code string `json:"code"`
+	}
+	if json.Unmarshal(data, &payload) != nil {
+		return ""
+	}
+	return payload.Code
 }
 
 // errorMessage reads the error text of an API error body. The API returns

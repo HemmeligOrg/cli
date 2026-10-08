@@ -47,8 +47,13 @@ func (f *fakeServer) serve(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case r.Method == http.MethodPost && r.URL.Path == "/api/files":
+		// The server reads these headers, and it stores v2 when the format is missing.
+		if r.Header.Get("X-Hemmelig-File-Format") != "v2" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		f.fileBody = body
-		f.fileName = r.Header.Get("X-Hemmelig-File-Name")
+		f.fileName = r.Header.Get("X-Hemmelig-Encrypted-Filename")
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write([]byte(`{"id":"file-1","token":"upload-token"}`))
 	case r.Method == http.MethodPost && r.URL.Path == "/api/secrets":
