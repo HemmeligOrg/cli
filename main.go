@@ -13,7 +13,7 @@ import (
 	"github.com/HemmeligOrg/hemmelig-cli/internal/prompt"
 )
 
-const version = "1.2.0"
+const version = "2.0.0"
 
 const banner = ` _   _                               _ _
 | | | | ___ _ __ ___  _ __ ___   ___| (_) __ _
@@ -133,7 +133,7 @@ Examples:
   hemmelig login --url https://secrets.example.com
   hemmelig admin users list --json
 
-Run hemmelig <command> --help for the flags of a command. Full guide: docs/cli.md.
+Run hemmelig <command> --help for the flags of a command. Guide: https://github.com/HemmeligOrg/hemmelig-cli/blob/main/docs/cli.md
 `)
 	return b.String()
 }

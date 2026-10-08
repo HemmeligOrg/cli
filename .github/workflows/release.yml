@@ -1,0 +1,103 @@
+name: Release
+
+on:
+    push:
+        tags:
+            - 'v*'
+
+permissions:
+    contents: read
+
+jobs:
+    build:
+        name: Build ${{ matrix.suffix }}
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                include:
+                    - { goos: linux, goarch: amd64, suffix: linux-amd64 }
+                    - { goos: linux, goarch: arm64, suffix: linux-arm64 }
+                    - { goos: darwin, goarch: amd64, suffix: darwin-amd64 }
+                    - { goos: darwin, goarch: arm64, suffix: darwin-arm64 }
+                    - { goos: windows, goarch: amd64, suffix: windows-amd64.exe }
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-go@v5
+              with:
+                  go-version-file: go.mod
+
+            - name: Check that the tag matches the version in main.go
+              run: |
+                  VERSION="${GITHUB_REF_NAME#v}"
+                  grep -q "^const version = \"${VERSION}\"$" main.go || {
+                    echo "::error::main.go does not have version ${VERSION}"
+                    exit 1
+                  }
+
+            - name: Test
+              run: go test ./...
+
+            - name: Build
+              env:
+                  GOOS: ${{ matrix.goos }}
+                  GOARCH: ${{ matrix.goarch }}
+                  CGO_ENABLED: 0
+              run: |
+                  go build -trimpath -ldflags="-s -w" -o "hemmelig-${{ matrix.suffix }}" .
+                  sha256sum "hemmelig-${{ matrix.suffix }}" > "hemmelig-${{ matrix.suffix }}.sha256"
+
+            - uses: actions/upload-artifact@v4
+              with:
+                  name: hemmelig-${{ matrix.suffix }}
+                  path: |
+                      hemmelig-${{ matrix.suffix }}
+                      hemmelig-${{ matrix.suffix }}.sha256
+
+    release:
+        name: Publish the release
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/download-artifact@v4
+              with:
+                  path: artifacts
+
+            - name: Collect the files and the checksums
+              run: |
+                  mkdir release
+                  find artifacts -type f -exec cp {} release/ \;
+                  cd release
+                  cat *.sha256 > checksums.txt
+                  cat checksums.txt
+
+            - uses: softprops/action-gh-release@v2
+              with:
+                  name: Hemmelig CLI ${{ github.ref_name }}
+                  files: |
+                      release/hemmelig-*
+                      release/checksums.txt
+                  body: |
+                      Encrypted, self-destructing secrets from the command line. The CLI encrypts on your machine, so the server gets only ciphertext.
+
+                      ## Install
+
+                      ```bash
+                      PLATFORM=linux-amd64 # or linux-arm64, darwin-amd64, darwin-arm64
+                      curl -fL "https://github.com/HemmeligOrg/hemmelig-cli/releases/download/${{ github.ref_name }}/hemmelig-${PLATFORM}" -o hemmelig
+                      chmod +x hemmelig
+                      sudo mv hemmelig /usr/local/bin/
+                      ```
+
+                      On Windows, download `hemmelig-windows-amd64.exe` and put it in a folder in your `PATH`.
+
+                      ## Verify
+
+                      ```bash
+                      curl -fL "https://github.com/HemmeligOrg/hemmelig-cli/releases/download/${{ github.ref_name }}/checksums.txt" -o checksums.txt
+                      sha256sum -c checksums.txt --ignore-missing
+                      ```
+
+                      See the [guide](https://github.com/HemmeligOrg/hemmelig-cli/blob/main/docs/cli.md) for all commands.
