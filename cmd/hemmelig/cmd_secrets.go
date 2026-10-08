@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/htmltext"
-	"github.com/HemmeligOrg/hemmelig-cli/internal/service"
+	"github.com/HemmeligOrg/cli/v2/internal/htmltext"
+	"github.com/HemmeligOrg/cli/v2/internal/service"
 )
 
 func (a *app) secretsCommand(args []string) error {

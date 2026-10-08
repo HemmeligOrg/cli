@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/service"
+	"github.com/HemmeligOrg/cli/v2/internal/service"
 )
 
 type flagKind int

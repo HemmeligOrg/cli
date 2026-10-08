@@ -29,7 +29,7 @@ trap 'rm -rf "$WORK"' EXIT
 unset HEMMELIG_API_KEY HEMMELIG_URL HEMMELIG_CONFIG_DIR
 
 BIN="$WORK/hemmelig"
-(cd "$ROOT" && go build -o "$BIN" . && go build -o "$WORK/totp" ./e2e/totp && go build -o "$WORK/mcpcheck" ./e2e/mcpcheck)
+(cd "$ROOT" && go build -o "$BIN" ./cmd/hemmelig && go build -o "$WORK/totp" ./e2e/totp && go build -o "$WORK/mcpcheck" ./e2e/mcpcheck)
 
 PASSED=0
 pass() {
@@ -84,7 +84,7 @@ random() { head -c 8 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
 pause_login() { sleep 11; }
 
 # ---------------------------------------------------------------- basics
-VERSION="$(sed -n 's/^const version = "\(.*\)"$/\1/p' "$ROOT/main.go")"
+VERSION="$(sed -n 's/^const version = "\(.*\)"$/\1/p' "$ROOT/cmd/hemmelig/main.go")"
 equal "version" "$(h admin version)" "$VERSION"
 equal "--version" "$(h admin --version)" "$VERSION"
 contains "help" "$(h admin help)" "Commands:"

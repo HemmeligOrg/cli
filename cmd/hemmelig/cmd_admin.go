@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/service"
+	"github.com/HemmeligOrg/cli/v2/internal/service"
 )
 
 func (a *app) adminCommand(args []string) error {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/api"
+	"github.com/HemmeligOrg/cli/v2/internal/api"
 )
 
 // ErrSessionRequired means that the action changes credentials. API keys

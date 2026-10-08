@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/api"
+	"github.com/HemmeligOrg/cli/v2/internal/api"
 )
 
 // ErrAdminRequired means that the credential does not belong to an admin.

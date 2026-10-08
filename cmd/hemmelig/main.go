@@ -10,7 +10,7 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/prompt"
+	"github.com/HemmeligOrg/cli/v2/internal/prompt"
 )
 
 const version = "2.0.0"
@@ -133,7 +133,7 @@ Examples:
   hemmelig login --url https://secrets.example.com
   hemmelig admin users list --json
 
-Run hemmelig <command> --help for the flags of a command. Guide: https://github.com/HemmeligOrg/hemmelig-cli/blob/main/docs/cli.md
+Run hemmelig <command> --help for the flags of a command. Guide: https://github.com/HemmeligOrg/cli/v2/blob/main/docs/cli.md
 `)
 	return b.String()
 }

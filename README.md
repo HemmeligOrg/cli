@@ -6,12 +6,12 @@ Version 2 works with Hemmelig 7.
 
 ## Install
 
-Download the binary for your platform from the [releases](https://github.com/HemmeligOrg/hemmelig-cli/releases):
+Download the binary for your platform from the [releases](https://github.com/HemmeligOrg/cli/releases):
 
 ```bash
 VERSION=2.0.0
 PLATFORM=linux-amd64 # or linux-arm64, darwin-amd64, darwin-arm64
-curl -fL "https://github.com/HemmeligOrg/hemmelig-cli/releases/download/v${VERSION}/hemmelig-${PLATFORM}" -o hemmelig
+curl -fL "https://github.com/HemmeligOrg/cli/releases/download/v${VERSION}/hemmelig-${PLATFORM}" -o hemmelig
 chmod +x hemmelig
 sudo mv hemmelig /usr/local/bin/
 ```
@@ -55,8 +55,14 @@ Run `hemmelig <command> --help` for the flags. The full guide is [docs/cli.md](d
 Use Go 1.25 or later:
 
 ```bash
-go build -o hemmelig .
+go build -o hemmelig ./cmd/hemmelig
 ./hemmelig --help
+```
+
+To install with Go, run:
+
+```bash
+go install github.com/HemmeligOrg/cli/v2/cmd/hemmelig@latest
 ```
 
 ## Test
@@ -71,7 +77,7 @@ go test ./...
 
 ## Release
 
-A tag `v<version>` starts the release workflow. It builds the binaries for Linux, macOS and Windows, writes `checksums.txt`, and publishes a GitHub release. Change `version` in `main.go` first.
+A tag `v<version>` starts the release workflow. It builds the binaries for Linux, macOS and Windows, writes `checksums.txt`, and publishes a GitHub release. Change `version` in `cmd/hemmelig/main.go` first.
 
 ```bash
 git tag v2.0.0
@@ -82,7 +88,7 @@ git push origin v2.0.0
 
 | Path                 | Content                                                         |
 | -------------------- | --------------------------------------------------------------- |
-| `*.go`               | The commands, the flag parser and the output                    |
+| `cmd/hemmelig`       | The commands, the flag parser and the output                    |
 | `internal/hcrypto`   | The secret, file and inbox encryption, as in the web app        |
 | `internal/api`       | The HTTP client                                                 |
 | `internal/service`   | The operations that the commands and the MCP server share       |

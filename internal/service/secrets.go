@@ -12,9 +12,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/api"
-	"github.com/HemmeligOrg/hemmelig-cli/internal/hcrypto"
-	"github.com/HemmeligOrg/hemmelig-cli/internal/links"
+	"github.com/HemmeligOrg/cli/v2/internal/api"
+	"github.com/HemmeligOrg/cli/v2/internal/hcrypto"
+	"github.com/HemmeligOrg/cli/v2/internal/links"
 )
 
 // FileInput is a file to attach to a new secret.

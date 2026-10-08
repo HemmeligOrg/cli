@@ -27,11 +27,11 @@ jobs:
               with:
                   go-version-file: go.mod
 
-            - name: Check that the tag matches the version in main.go
+            - name: Check that the tag matches the version in cmd/hemmelig/main.go
               run: |
                   VERSION="${GITHUB_REF_NAME#v}"
-                  grep -q "^const version = \"${VERSION}\"$" main.go || {
-                    echo "::error::main.go does not have version ${VERSION}"
+                  grep -q "^const version = \"${VERSION}\"$" cmd/hemmelig/main.go || {
+                    echo "::error::cmd/hemmelig/main.go does not have version ${VERSION}"
                     exit 1
                   }
 
@@ -44,7 +44,7 @@ jobs:
                   GOARCH: ${{ matrix.goarch }}
                   CGO_ENABLED: 0
               run: |
-                  go build -trimpath -ldflags="-s -w" -o "hemmelig-${{ matrix.suffix }}" .
+                  go build -trimpath -ldflags="-s -w" -o "hemmelig-${{ matrix.suffix }}" ./cmd/hemmelig
                   sha256sum "hemmelig-${{ matrix.suffix }}" > "hemmelig-${{ matrix.suffix }}.sha256"
 
             - uses: actions/upload-artifact@v4
@@ -86,7 +86,7 @@ jobs:
 
                       ```bash
                       PLATFORM=linux-amd64 # or linux-arm64, darwin-amd64, darwin-arm64
-                      curl -fL "https://github.com/HemmeligOrg/hemmelig-cli/releases/download/${{ github.ref_name }}/hemmelig-${PLATFORM}" -o hemmelig
+                      curl -fL "https://github.com/HemmeligOrg/cli/releases/download/${{ github.ref_name }}/hemmelig-${PLATFORM}" -o hemmelig
                       chmod +x hemmelig
                       sudo mv hemmelig /usr/local/bin/
                       ```
@@ -96,8 +96,8 @@ jobs:
                       ## Verify
 
                       ```bash
-                      curl -fL "https://github.com/HemmeligOrg/hemmelig-cli/releases/download/${{ github.ref_name }}/checksums.txt" -o checksums.txt
+                      curl -fL "https://github.com/HemmeligOrg/cli/releases/download/${{ github.ref_name }}/checksums.txt" -o checksums.txt
                       sha256sum -c checksums.txt --ignore-missing
                       ```
 
-                      See the [guide](https://github.com/HemmeligOrg/hemmelig-cli/blob/main/docs/cli.md) for all commands.
+                      See the [guide](https://github.com/HemmeligOrg/cli/blob/main/docs/cli.md) for all commands.

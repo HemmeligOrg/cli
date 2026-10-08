@@ -10,8 +10,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/api"
-	"github.com/HemmeligOrg/hemmelig-cli/internal/links"
+	"github.com/HemmeligOrg/cli/v2/internal/api"
+	"github.com/HemmeligOrg/cli/v2/internal/links"
 )
 
 const testID = "0b6c1c9e-4f3a-4c4e-9d8e-2b1f3a4c5d6e"

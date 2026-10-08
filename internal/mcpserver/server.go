@@ -10,8 +10,8 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/htmltext"
-	"github.com/HemmeligOrg/hemmelig-cli/internal/service"
+	"github.com/HemmeligOrg/cli/v2/internal/htmltext"
+	"github.com/HemmeligOrg/cli/v2/internal/service"
 )
 
 // UntrustedNotice goes with every secret that read_secret returns.

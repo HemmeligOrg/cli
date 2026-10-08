@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/mcpserver"
+	"github.com/HemmeligOrg/cli/v2/internal/mcpserver"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

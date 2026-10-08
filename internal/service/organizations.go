@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/api"
+	"github.com/HemmeligOrg/cli/v2/internal/api"
 )
 
 // Organization is an organization of the signed-in user.

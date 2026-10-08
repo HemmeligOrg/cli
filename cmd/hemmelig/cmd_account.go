@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/config"
-	"github.com/HemmeligOrg/hemmelig-cli/internal/service"
+	"github.com/HemmeligOrg/cli/v2/internal/config"
+	"github.com/HemmeligOrg/cli/v2/internal/service"
 )
 
 func (a *app) accountCommand(args []string) error {

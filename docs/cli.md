@@ -17,12 +17,12 @@ The CLI encrypts and decrypts on your machine. The server gets only ciphertext. 
 
 ## Install
 
-Download the binary for your platform from the [releases](https://github.com/HemmeligOrg/hemmelig-cli/releases). The files are `hemmelig-linux-amd64`, `hemmelig-linux-arm64`, `hemmelig-darwin-amd64`, `hemmelig-darwin-arm64` and `hemmelig-windows-amd64.exe`.
+Download the binary for your platform from the [releases](https://github.com/HemmeligOrg/cli/releases). The files are `hemmelig-linux-amd64`, `hemmelig-linux-arm64`, `hemmelig-darwin-amd64`, `hemmelig-darwin-arm64` and `hemmelig-windows-amd64.exe`.
 
 ```bash
 VERSION=2.0.0
 PLATFORM=linux-amd64
-curl -fL "https://github.com/HemmeligOrg/hemmelig-cli/releases/download/v${VERSION}/hemmelig-${PLATFORM}" -o hemmelig
+curl -fL "https://github.com/HemmeligOrg/cli/releases/download/v${VERSION}/hemmelig-${PLATFORM}" -o hemmelig
 chmod +x hemmelig
 sudo mv hemmelig /usr/local/bin/
 ```
@@ -30,7 +30,7 @@ sudo mv hemmelig /usr/local/bin/
 To verify the download, compare it with the checksum file of the release:
 
 ```bash
-curl -fL "https://github.com/HemmeligOrg/hemmelig-cli/releases/download/v${VERSION}/checksums.txt" -o checksums.txt
+curl -fL "https://github.com/HemmeligOrg/cli/releases/download/v${VERSION}/checksums.txt" -o checksums.txt
 sha256sum -c checksums.txt --ignore-missing
 ```
 
@@ -39,10 +39,8 @@ On Windows, download `hemmelig-windows-amd64.exe` and put it in a folder in your
 To install with Go 1.25 or later, run:
 
 ```bash
-go install github.com/HemmeligOrg/hemmelig-cli@latest
+go install github.com/HemmeligOrg/cli/v2/cmd/hemmelig@latest
 ```
-
-The installed binary is `hemmelig-cli`. Rename it to `hemmelig`, or build from a clone with `go build -o hemmelig .`.
 
 ## Quick start
 
@@ -540,7 +538,7 @@ The CLI prints only the link to stdout, so you can capture it in a pipeline. In 
       HEMMELIG_URL: https://secrets.example.com
       HEMMELIG_API_KEY: ${{ secrets.HEMMELIG_API_KEY }}
   run: |
-      curl -fsSL https://github.com/HemmeligOrg/hemmelig-cli/releases/download/v2.0.0/hemmelig-linux-amd64 -o hemmelig
+      curl -fsSL https://github.com/HemmeligOrg/cli/releases/download/v2.0.0/hemmelig-linux-amd64 -o hemmelig
       chmod +x hemmelig
       LINK=$(printf '%s' "${{ secrets.DEPLOY_KEY }}" | ./hemmelig secrets create --title "Deploy key" --expires 1h)
       echo "::add-mask::$LINK"

@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/api"
-	"github.com/HemmeligOrg/hemmelig-cli/internal/config"
-	"github.com/HemmeligOrg/hemmelig-cli/internal/links"
-	"github.com/HemmeligOrg/hemmelig-cli/internal/service"
+	"github.com/HemmeligOrg/cli/v2/internal/api"
+	"github.com/HemmeligOrg/cli/v2/internal/config"
+	"github.com/HemmeligOrg/cli/v2/internal/links"
+	"github.com/HemmeligOrg/cli/v2/internal/service"
 )
 
 var configKeys = []string{"url", "api-key"}

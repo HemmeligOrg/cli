@@ -6,10 +6,10 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/api"
-	"github.com/HemmeligOrg/hemmelig-cli/internal/links"
-	"github.com/HemmeligOrg/hemmelig-cli/internal/mcpserver"
-	"github.com/HemmeligOrg/hemmelig-cli/internal/service"
+	"github.com/HemmeligOrg/cli/v2/internal/api"
+	"github.com/HemmeligOrg/cli/v2/internal/links"
+	"github.com/HemmeligOrg/cli/v2/internal/mcpserver"
+	"github.com/HemmeligOrg/cli/v2/internal/service"
 )
 
 func (a *app) mcpCommand(args []string) error {

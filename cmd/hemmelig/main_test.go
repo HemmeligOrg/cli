@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HemmeligOrg/hemmelig-cli/internal/api"
-	"github.com/HemmeligOrg/hemmelig-cli/internal/prompt"
-	"github.com/HemmeligOrg/hemmelig-cli/internal/service"
+	"github.com/HemmeligOrg/cli/v2/internal/api"
+	"github.com/HemmeligOrg/cli/v2/internal/prompt"
+	"github.com/HemmeligOrg/cli/v2/internal/service"
 )
 
 func TestFlagParsing(t *testing.T) {
